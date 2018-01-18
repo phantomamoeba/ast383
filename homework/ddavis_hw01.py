@@ -14,6 +14,7 @@ __author__ = 'Dustin Davis'
 # command line option to set output name
 # optional egs random or fixed seed
 # optional plot statistics (if appropriate: mean, median, mode, variance, std, etc)
+# option to make x axis symmetric
 # option to show plot
 
 import scipy.stats as stats
@@ -50,12 +51,12 @@ def plot_pdf(dist_name,rvs_args=None,pdf_args=None):
 
     plt.title("%s Distribution" % dist_name)
     plt.xlim(xmin,xmax)
-    plt.ylabel("fraction")
+    plt.ylabel("normed")
     plt.xlabel("x")
 
     #note: plt.hist uses numpy.histogram, but can call it explicitly if needed
     #e.g. values, edges = np.histogram(samples,bins=30,normed=True)
-    plt.hist(samples, 30, normed=1, facecolor='r')
+    plt.hist(samples, 30, normed=True, facecolor='r')
     plt.plot(x, pdf,c='b')
 
     plt.savefig(outfile)
