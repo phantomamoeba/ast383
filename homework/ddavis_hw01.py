@@ -37,10 +37,8 @@ def plot_pdf(dist_name,rvs_args=None,pdf_args=None):
         cmd += ')'
     samples = eval(cmd)
 
-
     xmin = np.min(samples)
     xmax = np.max(samples)
-
     x = np.linspace(xmin, xmax, 1000)
 
     cmd = 'stats.' + dist_name + '.pdf(x'
@@ -55,6 +53,8 @@ def plot_pdf(dist_name,rvs_args=None,pdf_args=None):
     plt.ylabel("fraction")
     plt.xlabel("x")
 
+    #note: plt.hist uses numpy.histogram, but can call it explicitly if needed
+    #e.g. values, edges = np.histogram(samples,bins=30,normed=True)
     plt.hist(samples, 30, normed=1, facecolor='r')
     plt.plot(x, pdf,c='b')
 
