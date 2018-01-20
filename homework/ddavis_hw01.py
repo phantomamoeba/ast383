@@ -49,15 +49,18 @@ def plot_pdf(dist_name,rvs_args=None,pdf_args=None):
         cmd += ')'
     pdf = eval(cmd)
 
-    plt.title("%s Distribution" % dist_name)
+    plt.figure()
+    plt.title("%s Distribution\nhistogram (30 fixed bins from 1000 samples) and pdf" % dist_name)
     plt.xlim(xmin,xmax)
     plt.ylabel("normed")
     plt.xlabel("x")
 
     #note: plt.hist uses numpy.histogram, but can call it explicitly if needed
     #e.g. values, edges = np.histogram(samples,bins=30,normed=True)
-    plt.hist(samples, 30, normed=True, facecolor='r')
-    plt.plot(x, pdf,c='b')
+    plt.hist(samples, 30, normed=True, facecolor='r',label="histogram")
+    plt.plot(x, pdf,c='b',label='pdf')
+
+    plt.legend(loc='upper right', bbox_to_anchor=(0.98, 0.98), borderaxespad=0)
 
     plt.savefig(outfile)
     print("Output written to %s" % outfile)
