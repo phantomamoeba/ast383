@@ -56,8 +56,11 @@ def method1():
     #plt.show()
 
 
+
+
 def method2():
     """
+    #shows both the validity of CLT and the decrease in sd with increase in N
     scatter of sd of means for 1000 runs each of 10,100,1000,10000 samples
     :return:
     """
@@ -79,18 +82,23 @@ def method2():
         t10_4[i] = np.mean(stats.chi2.rvs(df=dof, size=10000))
 
     sds = [np.std(t10_1),np.std(t10_2),np.std(t10_3),np.std(t10_4)]
+    clt = [clt_sd / np.sqrt(10), clt_sd / np.sqrt(10 ** 2), clt_sd / np.sqrt(10 ** 3), clt_sd / np.sqrt(10 ** 4)]
     x = np.arange(0,4)
 
     plt.figure()
 
-    plt.title(r'$\chi^2$ Distribution (DoF=50) CLT $\sigma$ vs Sample sd' '\n of sd of means')
-    plt.xlabel("Number of Samples (Points)")
-    plt.ylabel("Standard Deviation of Means")
+    plt.title(r'$\chi^2$ Distribution (DoF=50)' 
+              '\nCLT Predicted $\sigma$ vs sd of Sample Means')
+    plt.xlabel(r"$Log_{10}(N)$ (N = Number of Sample Points)")
+    plt.ylabel("Standard Deviation of Sample Means")
 
-    plt.plot(x, sds)
+    plt.plot(x, sds,c='b',label="sd of sample means")
+    plt.plot(x, clt,c='r',linestyle=":",label=r'CLT $\sigma \approx \frac{\sigma_{\chi^2}}{\sqrt{N}}$')
+
+    plt.legend(loc='upper right', bbox_to_anchor=(0.98, 0.98), borderaxespad=0)
 
     plt.tight_layout()
-    #plt.savefig("./out/ddavis_hw02_sd_of_means.pdf", bbox_inches="tight")
+    plt.savefig("./out/ddavis_hw02_sd_of_means.pdf", bbox_inches="tight")
 
     plt.show()
 
@@ -117,12 +125,13 @@ def method3():
         t10_4[i] = np.sum(stats.chi2.rvs(df=dof, size=10000))
 
     sds = [np.std(t10_1),np.std(t10_2),np.std(t10_3),np.std(t10_4)]
+    clt = [clt_sd/np.sqrt(10),clt_sd/np.sqrt(10**2),clt_sd/np.sqrt(10**3),clt_sd/np.sqrt(10**4)]
     x = np.arange(0,4)
 
     plt.figure()
 
     plt.title(r'$\chi^2$ Distribution (DoF=50) CLT $\sigma$ vs Sample sd' '\n of sd of sums')
-    plt.xlabel("Number of Samples (Points)")
+    plt.xlabel("Log Number of Samples (Points)")
     plt.ylabel("Standard Deviation of Sums")
 
     plt.plot(x, sds)
@@ -144,8 +153,8 @@ def main():
 
 
  #   method1()
-  #  method2()
-    method3()
+    method2()
+#    method3()
 
 
 if __name__ == '__main__':
