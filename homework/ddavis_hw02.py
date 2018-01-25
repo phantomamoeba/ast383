@@ -37,19 +37,19 @@ def main():
     plt.figure()
 
     plt.title(r'$\chi^2$ Distribution (DoF=50)'
-              '\nCLT Predicted $\sigma$ vs sd of Sample Means')
+              '\nCLT Predicted $\sigma$ vs sd of Sample Sums')
     plt.xlabel(r"$Log_{10}(N)$ (N = Number of Sample Points)")
-    plt.ylabel("Standard Deviation of Sample Means")
+    plt.ylabel("Standard Deviation of Sample Sums")
 
-    plt.plot(x, sample_sd, c='b', label="sd of sample means")
+    plt.plot(x, sample_sd, c='b', label="sd of sample sums")
     plt.plot(x, clt_sd, c='r', linestyle=":", label=r'CLT $\sigma \approx \sigma_{\chi^2} \cdot \sqrt{N}$')
 
     plt.legend(loc='upper left', bbox_to_anchor=(0.02, 0.98), borderaxespad=0)
 
     plt.tight_layout()
-    #plt.savefig("./out/ddavis_hw02.pdf", bbox_inches="tight")
+    plt.savefig("./out/ddavis_hw02.pdf", bbox_inches="tight")
 
-    plt.show()
+    #plt.show()
 
 if __name__ == '__main__':
     main()
