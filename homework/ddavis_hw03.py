@@ -2,6 +2,10 @@ __author__ = 'Dustin Davis'
 #AST383 HW03
 #January 26, 2018
 
+import sys
+sys.path.append('../NPEET')
+
+import entropy_estimators as ee
 import scipy.stats as stats
 import numpy as np
 import matplotlib.pyplot as plt
@@ -12,16 +16,25 @@ def main():
 
      """
 
-    samples = [None]*100 #list of arrays
-    means = [None]*100
 
-    for i in range(100):
-        samples[i] = stats.norm.rvs(size=100)
-        means[i] = np.mean(samples[i])
-        #todo .... step 3 and on
+    N = [10,100,1000,10000]
+    num_of_samples = 100
+    #samples = [[]*num_of_samples]*len(N) #np.empty((num_of_samples,len(N))).tolist() #2d array
 
+    true_entropy = stats.norm.entropy() #loc=0,scale=1
 
 
+    for i in range(num_of_samples):
+        for j in range(len(N)):
+            sample = []
+            for k in range(N[j]):
+                sample.append([stats.norm.rvs()])
+            bias = true_entropy - ee.entropy(sample)
+            relative_bias = bias/true_entropy
+            print(relative_bias, N[j])
+
+
+    exit(0)
 
     #plotting
     plt.figure()
