@@ -1,6 +1,6 @@
 __author__ = 'Dustin Davis'
 #AST383 HW03
-#January 26, 2018
+#January 29, 2018
 
 import sys
 sys.path.append('../NPEET')
@@ -16,91 +16,60 @@ def main():
 
      """
 
-
     N = [10,100,1000,10000]
-    num_of_samples = 100
-    #samples = [[]*num_of_samples]*len(N) #np.empty((num_of_samples,len(N))).tolist() #2d array
-
+    num_of_samples = 1000
     true_entropy = stats.norm.entropy() #loc=0,scale=1
 
     #test for convergence
     # treat entropy as a random variable
     # take means of samples and show the sd of those means approaches zero
 
-    if False:
-        sample_entropy = np.empty((num_of_samples,len(N))).tolist() #[[None]*4] #4 lists (one for each N) of the entropies of each sample
-        means = np.zeros(4)
-        sds = np.zeros(4)
+    #N x num_of_samples
+    sample_entropy = np.empty((len(N),num_of_samples)).tolist()
+    means = np.zeros(4)
+    sds = np.zeros(4)
+    biases = np.empty((len(N),num_of_samples))
+
+    for i in range(len(N)):
+        print(i)
+        for j in range(num_of_samples):
+            #reshape so can pass a list of list of floats (one float in each sub-list) to ee.entropy
+            sample = np.reshape(stats.norm.rvs(size=N[i]),(N[i],1)).tolist()
+            entropy_est = ee.entropy(sample)
+            sample_entropy[i][j] = entropy_est
+
+            #get the bias of the entropy estimate for this one sample of size N
+            bias = true_entropy - entropy_est
+            biases[i][j] = bias
+            #relative_bias = bias/true_entropy
+            #print(relative_bias, N[j])
 
 
-        for i in range(num_of_samples):
-            print(i)
-            for j in range(len(N)):
-                sample = []
-                for k in range(N[j]):
-                    sample.append([stats.norm.rvs()])
+    #does the bias converage, use CLT ... expect the std to approach 0.0
+    for i in range(len(N)):
+        means[i] = np.mean(biases[i]) #means of the biases
+        sds[i] = np.std(biases[i])
 
-
-                sample_entropy[i][j] = ee.entropy(sample)
-
-                #bias = true_entropy - ee.entropy(sample)
-                #relative_bias = bias/true_entropy
-                #print(relative_bias, N[j])
-
-
-        for j in range(len(N)):
-            means[j] = np.mean(sample_entropy[j])
-            sds[j] = np.std(sample_entropy[j])
-
-            print(j,means[j],sds[j])
-            #hmmm .... small sample Ns seem to converge (10 and 100), the 1000 and 10^4 don't seem to
-
-
-    #pass in 100 lists each of 10, 100, 1000, 10000 samples
-    #get 4 entropies (one for each of 10, 100, 1000, 10000 samples)
-    if True:
-        sample_rvs = np.empty((len(N),num_of_samples)).tolist() #4x100
-        sample_entropy = np.empty((num_of_samples, len(N))).tolist()  # [[None]*4] #4 lists (one for each N) of the entropies of each sample
-        means = np.zeros(4)
-        sds = np.zeros(4)
-
-        for j in range(len(N)):
-            for i in range(num_of_samples):
-                sample_rvs[j][i] = stats.norm.rvs(size=N[j])
-
-                # bias = true_entropy - ee.entropy(sample)
-                # relative_bias = bias/true_entropy
-                # print(relative_bias, N[j])
-
-        entropies = np.zeros(len(N))
-        for j in range(len(N)):
-            entropies[j] = ee.entropy(sample_rvs[j])
-
-            print(j,entropies[j])
-
-            #means[j] = np.mean(sample_entropy[j])
-            #sds[j] = np.std(sample_entropy[j])
-
-            #print(j, means[j], sds[j])
-            # hmmm .... small sample Ns seem to converge (10 and 100), the 1000 and 10^4 don't seem to
-
-    exit(0)
+        print(i,means[i],sds[i])
+        #hmmm .... biases don't seem to converge ... std remains essentially constant across num_of_samples
 
     #plotting
     plt.figure()
-    plt.title(r'')
-    plt.xlabel(r"")
-    plt.ylabel("")
+    plt.title(r'Relative Bias of Entropy Estimator for Normal Distribution' 
+              '\nNum of Samples (%d)' %(num_of_samples))
+    plt.xlabel(r"$Log_{10}(N)$ (N = Number of Points per Sample)")
+    plt.ylabel("mean of relative bias")
 
-    #plt.plot(x, sample_sd, c='b', label="sd of sample sums")
-    #plt.plot(x, clt_sd, c='r', linestyle=":", label=r'CLT $\sigma \approx \sigma_{\chi^2} \cdot \sqrt{N}$')
+    x = np.arange(1, 5)
+    #unexpected ... relative bias actually increases (in abs) with the size of N
+    plt.plot(x, means/true_entropy, c='b', label="mean of relative biases")
 
-    plt.legend(loc='upper left', bbox_to_anchor=(0.02, 0.98), borderaxespad=0)
+    #plt.legend(loc='upper left', bbox_to_anchor=(0.02, 0.98), borderaxespad=0)
 
     plt.tight_layout()
-    plt.savefig("./out/ddavis_hw03.pdf", bbox_inches="tight")
+    plt.savefig("./out/ddavis_hw03_%d.pdf" %num_of_samples, bbox_inches="tight")
 
-    #plt.show()
+    plt.show()
 
 if __name__ == '__main__':
     main()
