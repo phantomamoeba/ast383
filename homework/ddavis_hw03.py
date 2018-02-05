@@ -17,8 +17,9 @@ def main():
      """
 
     N = [10,100,1000,10000]
-    num_of_samples = 1000
-    true_entropy = stats.norm.entropy() #loc=0,scale=1
+    num_of_samples = 100
+    true_entropy = stats.norm.entropy() #loc=0,scale=1  #base e
+    true_entropy = np.log2(np.exp(true_entropy)) #fix to base 2 to match ee.entropy
 
     #test for convergence
     # treat entropy as a random variable
@@ -35,7 +36,7 @@ def main():
         for j in range(num_of_samples):
             #reshape so can pass a list of list of floats (one float in each sub-list) to ee.entropy
             sample = np.reshape(stats.norm.rvs(size=N[i]),(N[i],1)).tolist()
-            entropy_est = ee.entropy(sample)
+            entropy_est = ee.entropy(sample,base=2)
             sample_entropy[i][j] = entropy_est
 
             #get the bias of the entropy estimate for this one sample of size N
