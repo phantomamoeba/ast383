@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats as stats
-from astropy.stats import histogram as astrohist
 
 np.seterr(divide='ignore')
 
@@ -65,8 +64,8 @@ def main():
 
     for i in range(N):
         print( min_aic(data[i]))
-        hist, edges = astrohist(data[i],bins='scott')
-        print("Astro:",len(hist))
+        hist, edges = np.histogram(data[i],bins='doane')
+        print("numpy:",len(hist))
      #   print( data[i])
 
 
