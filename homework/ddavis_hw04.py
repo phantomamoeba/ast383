@@ -13,7 +13,7 @@ def aic_hist(h):
 
     #todo: error checking
     h = np.array(h).astype(float)  # just to be safe and to protect the log
-    k = len(h)
+    k = float(len(h))
     n = np.sum(h)
 
    # summing_term = h * np.log(float(k)/float(n)*h)
@@ -21,7 +21,7 @@ def aic_hist(h):
     h[h == 0] = 10**-10
 
     try:
-        aic =  -2 *np.sum(  h * np.log(h*float(k)/n)  ) + 2*(k-1)
+        aic = -2 *np.sum( h*np.log(h*k/n) ) + 2*(k-1)
     except:
         #generally h == 0 so, log is not valid
         aic = np.inf
@@ -63,7 +63,7 @@ def main():
         data.append(stats.cauchy.rvs(size=10**(i+1)))
 
     for i in range(N):
-        print( min_aic(data[i]))
+        print("AIC", min_aic(data[i]))
         hist, edges = np.histogram(data[i],bins='doane')
         print("numpy:",len(hist))
      #   print( data[i])
