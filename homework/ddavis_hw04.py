@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats as stats
+from astropy.stats import histogram as astrohist
 
 np.seterr(divide='ignore')
 
@@ -12,13 +13,20 @@ def aic_hist(h):
     '''
 
     #todo: error checking
-    h = np.array(h)  # just to be safe
+    h = np.array(h).astype(float)  # just to be safe and to protect the log
     k = len(h)
     n = np.sum(h)
 
    # summing_term = h * np.log(float(k)/float(n)*h)
+    #get rid of 0 height to protect log
+    h[h == 0] = 10**-10
 
-    return -2 *np.sum(  h * np.log(float(k)/float(n)*h)  ) + 2*(k-1)
+    try:
+        aic =  -2 *np.sum(  h * np.log(h*float(k)/n)  ) + 2*(k-1)
+    except:
+        #generally h == 0 so, log is not valid
+        aic = np.inf
+    return aic
 
 
 
@@ -35,23 +43,31 @@ def min_aic(data):
     #?? is this a single mode, so once we find a turn over, we are done?
     #   i.e. once aic[x+1] > aix[x], we have found the minimum?
 
-    aic = np.zeros(len(data))
+    aic = np.zeros(len(data)) # a little waste, but then the index is the number of bins
+    aic += np.inf
     #call to np.histogram (reminder, if bins=<int> is number of bins, else if array, it defines the edges
     for k in range(2,len(data)):
         hist, edges = np.histogram(data,bins=k)
         aic[k] = aic_hist(hist)
-        print(k,aic[k])
+     #   print(k,aic[k])
 
     #get rid of nans
     aic[np.isnan(aic)] = np.inf
-    return np.argmin(aic)+2,min(aic)
+    return np.argmin(aic),min(aic)
 
 def main():
 
     #test, some random data
-    data = stats.norm.rvs(size=10)
+    N = 4
+    data = []
+    for i in range(N):
+        data.append(stats.cauchy.rvs(size=10**(i+1)))
 
-    print( min_aic(data))
+    for i in range(N):
+        print( min_aic(data[i]))
+        hist, edges = astrohist(data[i],bins='scott')
+        print("Astro:",len(hist))
+     #   print( data[i])
 
 
 if __name__ == '__main__':
