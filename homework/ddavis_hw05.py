@@ -1,7 +1,7 @@
 import os
 
 import numpy as np
-#import tensorflow as tf
+import tensorflow as tf
 
 
 #fixed seed for now so runs are repeatable (testable)
@@ -37,9 +37,36 @@ def make_true_image(dim_x, dim_y, num_points):
 
     return image, points
 
+
 def make_psf(dim_x, dim_y):
     psf = np.random.random((dim_x, dim_y))
     psf /= np.sum(psf)
     return psf
 
+def convolve(image,kernel):
+    #for now, at least, image is 2D with one channel
 
+    # num_batches, x,y, input channels
+    # if RGB would be 3 input channles?
+    # if passing in multiple 2D matrices, num_batches would equal that number?
+    x = image.reshape(1,image.shape[0],image.shape[1],1).astype('float32')
+
+    # x,y,num input channels, num output channels ... inputs need to match vs the true_image
+    w = kernel.reshape(kernel.shape[0],kernel.shape[1],1,1).astype('float32')
+    return tf.nn.convolution(x, w, "SAME")
+
+
+
+def main():
+
+    true_image, true_points = make_true_image(10,10,3)
+    true_psf = make_psf(3,3)
+
+    #convolved_image = tf.nn.convolution(true_image,true_psf,"SAME")
+    convolved_image = convolve(true_image,true_psf)
+
+    print(convolved_image)
+
+
+if __name__ == '__main__':
+    main()
