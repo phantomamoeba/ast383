@@ -76,7 +76,7 @@ def build_observation(image, psf):
     return out
 
 
-def fit_model(observation,psf,iterations=100,learning_rate=0.5, l1_reg_scale=0.0001):
+def fit_model(observation,psf,iterations=1000,learning_rate=0.01, l1_reg_scale=0.0001):
     # step 5
     best_model = None
     with tf.variable_scope("fit"):
@@ -84,20 +84,33 @@ def fit_model(observation,psf,iterations=100,learning_rate=0.5, l1_reg_scale=0.0
         ph_psf = tf.placeholder(dtype=tf.float32, shape=psf.shape)
         # ph_test = tf.placeholder(dtype=tf.float32, shape=observation.shape)
 
-        test_image, test_points = make_image(10, 10, 3)
+        test_image, test_points = make_image(observation.shape[1], observation.shape[2], 0) #start all zeroes
 
         var_model = tf.get_variable(name='model',
                                     # shape=observation.shape,
                                     dtype=tf.float32,
                                     trainable=True,
                                     constraint=lambda x: tf.clip_by_value(x, 0, np.inf),  # force positive only
-                                    initializer=build_observation(test_image, psf),
+                                    #initializer=build_observation(test_image, psf),
+                                    initializer=test_image,
                                     regularizer=tf.contrib.layers.l1_regularizer(scale=l1_reg_scale)  # todo: make scale tunable
+                                    )
+
+        var_convolved = tf.get_variable(name='convolved_model',
+                                    shape=observation.shape,
+                                    dtype=tf.float32,
+                                    trainable=False,
+                                    constraint=None,  # force positive only
+                                    # initializer=build_observation(test_image, psf),
+                                    initializer=None,
+                                    regularizer=None
+                                    # todo: make scale tunable
                                     )
 
         #regularizer = tf.contrib.layers.l1_regularizer(scale=l1_reg_scale)
        # weights = tf.trainable_variables()
        # l1_reg_penalty = tf.contrib.layers.apply_regularization(tf.contrib.layers.l1_regularizer(scale=l1_reg_scale),weights)
+        #var_convolved = tf.nn.convolution(var_model, ph_psf, "SAME")#build_observation(var_model,psf)
         loss = tf.nn.l2_loss(var_model - ph_obs) + sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)) # not adding a bias term (yet)
         optimizer = tf.train.AdamOptimizer(learning_rate)
         train = optimizer.minimize(loss)  # use defaults for now
@@ -168,19 +181,17 @@ def fidelity(true_image,model_image):
 def main():
 
     #start with the true data
-    true_image, true_points = make_image(10,10,3)
+    true_image, true_points = make_image(100,100,30)
     true_psf = make_psf(3,3)
 
     observation = build_observation(true_image, true_psf)
     model = fit_model(observation,true_psf)
 
-    #todo: deconvolve the model (remove the psf) and compare to true_image
-
     print("true", observation)
 
     print("\n\ndiff", observation-model)
 
-    print(fidelity(observation,model))
+    print("chi2 between truth and model",fidelity(observation,model))
 
    # print(observation)
 
