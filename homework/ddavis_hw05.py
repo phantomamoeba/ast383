@@ -2,6 +2,7 @@ import os
 
 import numpy as np
 import tensorflow as tf
+import matplotlib.pyplot as plt
 
 
 #fixed seed for now so runs are repeatable (testable)
@@ -76,7 +77,7 @@ def build_observation(image, psf):
     return out
 
 
-def fit_model(observation,psf,iterations=1000,learning_rate=0.01, l1_reg_scale=0.0001):
+def fit_model(observation,psf,iterations=5000,learning_rate=0.01, l1_reg_scale=0.0001):
     # step 5
     best_model = None
     with tf.variable_scope("fit"):
@@ -117,21 +118,30 @@ def fit_model(observation,psf,iterations=1000,learning_rate=0.01, l1_reg_scale=0
 
         # could have just done train = tf.train.AdamOptimizer(0.5).minimize(loss), but want to be more explicitly clear
 
+        keep_last = 10
+        last_loss = [0]*keep_last
+
         with tf.Session() as sess:
             # run the graph
             sess.run(tf.global_variables_initializer())
 
             #todo: make the iteration length variable (base on input size or stabilization of loss?)
-            for _ in range(iterations):
+            for i in range(iterations):
                 sess.run(train, feed_dict={ph_obs: observation, ph_psf: psf})
 
                 # see how we are progressing
-                print(sess.run(loss, feed_dict={ph_obs: observation, ph_psf: psf}))
+                last_loss[i%keep_last] = sess.run(loss, feed_dict={ph_obs: observation, ph_psf: psf})
+                print(i,last_loss[i%keep_last] )
+
+                if np.std(last_loss) < 1e-9: #stable, we're done
+                    print("Sufficiently stable. Exiting training.")
+                    break
+
                 # print(sess.graph.get_tensor_by_name('fit/model:0').eval())
 
             best_model = sess.run(var_model)
 
-            print("test",best_model )
+            #print("test",best_model )
 
     return best_model
 
@@ -178,6 +188,46 @@ def fidelity(true_image,model_image):
     chi2, c = chi_sqr(true_image,model_image)
     return chi2
 
+def make_plots(images):
+    #make subplots of all images
+    #no error control here ... just for debugging
+
+    fig = plt.figure(figsize=(14, 14))
+    fig.subplots_adjust(hspace=.8)
+    fig.subplots_adjust(wspace=.5)
+
+    #fig.suptitle("", fontsize=15)
+
+    plt.subplot(231)
+    plt.title("True Image")
+    plt.imshow(images[0])
+
+    plt.subplot(232)
+    plt.title("True PSF")
+    plt.imshow(images[1])
+
+    plt.subplot(233)
+    plt.title("True Observation")
+    plt.imshow(images[2])
+
+    if images[3]:
+        plt.subplot(234)
+        plt.title("Model Image")
+        plt.imshow(images[3])
+
+    if images[4]:
+        plt.subplot(235)
+        plt.title("Model PSF")
+        plt.imshow(images[4])
+
+    plt.subplot(236)
+    plt.title("Model Observation")
+    plt.imshow(images[5])
+
+
+    plt.show()
+
+
 def main():
 
     #start with the true data
@@ -187,11 +237,14 @@ def main():
     observation = build_observation(true_image, true_psf)
     model = fit_model(observation,true_psf)
 
-    print("true", observation)
+#    print("true", observation)
 
-    print("\n\ndiff", observation-model)
+ #   print("\n\ndiff", observation-model)
 
     print("chi2 between truth and model",fidelity(observation,model))
+
+    make_plots([np.squeeze(true_image), np.squeeze(true_psf),np.squeeze(observation),
+                None,None,np.squeeze(model)])
 
    # print(observation)
 
