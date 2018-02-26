@@ -4,13 +4,13 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
-
+known_psf = False
 #fixed seed for now so runs are repeatable (testable)
 SEED = 1138
 np.random.seed(SEED)
 
 poisson_avg_photons_per_pix = 3
-poisson_avg_value_per_photon = 0.1
+poisson_avg_value_per_photon = 0.01
 
 def pix_dist(x1,y1,x2,y2):
     return np.sqrt((x1-x2)**2 + (y1-y2)**2)
@@ -110,7 +110,8 @@ def build_observation(image, psf, add_noise=False):
     return out_image, noise
 
 
-def fit_model(observation,psf,noise=None,recover_base_image=False,iterations=5000,learning_rate=0.01, l1_reg_scale=0.0001):
+def fit_model(observation,psf=None,noise=None,recover_base_image=False,iterations=5000,learning_rate=0.01,
+              l1_reg_scale=0.01, minibatch_keep=1.0):
     '''
 
     :param observation: (with noise and psf convolution)
@@ -125,21 +126,28 @@ def fit_model(observation,psf,noise=None,recover_base_image=False,iterations=500
 
     best_model_image = None
     best_model_obs = None
+    best_model_psf = []
 
     if noise is None:
         noise = np.zeros((observation.shape[1], observation.shape[2]))
+        noise = noise.reshape(1, noise.shape[0], noise.shape[1], 1).astype('float32')
 
 
     with tf.variable_scope("fit"):
         ph_obs = tf.placeholder(dtype=tf.float32, shape=observation.shape)
-        ph_psf = tf.placeholder(dtype=tf.float32, shape=psf.shape)
         ph_noise = tf.placeholder(dtype=tf.float32, shape=noise.shape)
 
-        feed = {ph_obs: observation, ph_psf: psf, ph_noise: noise}
+
+        if psf is not None:
+            ph_psf = tf.placeholder(dtype=tf.float32, shape=psf.shape)
+            feed = {ph_obs: observation, ph_psf: psf, ph_noise: noise}
+        else:
+            feed = {ph_obs: observation, ph_noise: noise}
 
         # ph_test = tf.placeholder(dtype=tf.float32, shape=observation.shape)
 
         test_image, test_points = make_image(observation.shape[1], observation.shape[2], 0) #start all zeroes
+        test_psf = make_psf(3, 3)
 
         var_model = tf.get_variable(name='model',
                                     # shape=observation.shape,
@@ -149,6 +157,21 @@ def fit_model(observation,psf,noise=None,recover_base_image=False,iterations=500
                                     #initializer=build_observation(test_image, psf),
                                     initializer=test_image,
                                     regularizer=tf.contrib.layers.l1_regularizer(scale=l1_reg_scale)
+                                    )
+        if psf is None:
+
+            def psf_constraint(x):
+                x = tf.clip_by_value(x, 0, np.inf)
+                x /= tf.reduce_sum(x)
+                return x
+
+            var_psf = tf.get_variable(name='psf',
+                                    # shape=observation.shape,
+                                    dtype=tf.float32,
+                                    trainable=True,
+                                    constraint=psf_constraint,  # force positive only
+                                    initializer=test_psf,
+                                    regularizer=None
                                     )
 
 
@@ -168,26 +191,27 @@ def fit_model(observation,psf,noise=None,recover_base_image=False,iterations=500
            # weights = tf.trainable_variables()
            # l1_reg_penalty = tf.contrib.layers.apply_regularization(tf.contrib.layers.l1_regularizer(scale=l1_reg_scale),weights)
 
+            if psf is not None: #psf is known and passed in
+                var_convolved = tf.nn.convolution(var_model, ph_psf, "SAME")
+            else:
+                var_convolved = tf.nn.convolution(var_model, var_psf, "SAME")
 
-            var_convolved = tf.nn.convolution(var_model, ph_psf, "SAME")
 
-            # todo: how to deal with the noise?
-            # this is just for my own notes, but adding poisson noise is NOT the correct thing to do
-            # as that is (random) and will not allow the loss to converge
             var_convolved = tf.add(var_convolved,noise)
-            #var_convolved += poisson_avg_value_per_photon * \
-            #                   tf.random_poisson(lam=poisson_avg_photons_per_pix,
-            #                                     shape=(observation.shape[1], observation.shape[2]), seed=SEED)
+            loss = tf.nn.l2_loss(tf.nn.dropout(var_convolved-ph_obs,keep_prob=minibatch_keep)) + sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
+            #loss = tf.nn.l2_loss(var_convolved - ph_obs) + sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)) # not adding a bias term (yet)
 
-            loss = tf.nn.l2_loss(var_convolved - ph_obs) + sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)) # not adding a bias term (yet)
         else: #the model is vs observation with psf and noise
             loss = tf.nn.l2_loss(var_model - ph_obs) + sum(
                 tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))  # not adding a bias term (yet)
 
-        optimizer = tf.train.AdamOptimizer(learning_rate)
-        train = optimizer.minimize(loss)  # use defaults for now
 
-        # could have just done train = tf.train.AdamOptimizer(0.5).minimize(loss), but want to be more explicitly clear
+        optimizer = tf.train.AdamOptimizer(learning_rate).minimize(loss,var_list=[var_model])
+        if psf is None:
+            optimizer_psf = tf.train.AdamOptimizer(learning_rate).minimize(loss, var_list=[var_psf])
+          #  optimizer = tf.train.AdamOptimizer(learning_rate).minimize(loss, var_list=[var_model,var_psf])
+
+        #train = optimizer.minimize(loss)  # use defaults for now
 
         keep_last = 10
         last_loss = [0]*keep_last
@@ -198,13 +222,15 @@ def fit_model(observation,psf,noise=None,recover_base_image=False,iterations=500
 
             #todo: make the iteration length variable (base on input size or stabilization of loss?)
             for i in range(iterations):
-                sess.run(train, feed_dict=feed)
+                sess.run(optimizer, feed_dict=feed)
+                if psf is None:
+                    sess.run(optimizer_psf, feed_dict=feed)
 
                 # see how we are progressing
                 last_loss[i%keep_last] = sess.run(loss, feed_dict=feed)
                 print(i,last_loss[i%keep_last] )
 
-                if np.std(last_loss) < 1e-9: #stable, we're done
+                if np.std(last_loss) < 1e-6: #stable, we're done
                     print("Sufficiently stable. Exiting training.")
                     break
 
@@ -218,9 +244,15 @@ def fit_model(observation,psf,noise=None,recover_base_image=False,iterations=500
                 best_model_image = []
                 best_model_obs = sess.run(var_model, feed_dict=feed)
 
+            if psf is None:
+                best_model_psf = sess.run(var_psf, feed_dict=feed)
+            else:
+                best_model_psf = psf
+
+
             #print("test",best_model )
 
-    return best_model_image, best_model_obs
+    return best_model_image, best_model_obs, best_model_psf
 
 
 def chi_sqr(obs, exp, error=None):
@@ -301,7 +333,7 @@ def make_plots(images):
     plt.title("Model Observation")
     plt.imshow(images[5])
 
-
+    plt.savefig("out/ddavis_hw05.pdf")
     plt.show()
 
 
@@ -310,23 +342,37 @@ def main():
     #start with the true data
     true_image, true_points = make_image(100,100,30)
     true_psf = make_psf(3,3)
+    observation, true_noise = build_observation(true_image, true_psf, add_noise=True)
 
-    observation,true_noise = build_observation(true_image, true_psf,add_noise=True)
-    model_image, model_obs = fit_model(observation,true_psf,noise=true_noise,recover_base_image=True,iterations=5000)
+    if known_psf:
+        model_image, model_obs, model_psf = fit_model(observation,psf=true_psf,noise=true_noise,recover_base_image=True,
+                                              iterations=1000)
 
-#    print("true", observation)
+        print("Known PSF ....\n")
+        if len(model_image) > 0:
+            print("chi2 between truth and model", fidelity(true_image, model_image))
 
- #   print("\n\ndiff", observation-model)
+        print("chi2 between truth and model (obs)", fidelity(observation,model_obs))
 
-    if len(model_image) > 0:
-        print("chi2 between truth and model", fidelity(true_image, model_image))
+        make_plots([np.squeeze(true_image), np.squeeze(true_psf),np.squeeze(observation),
+                    np.squeeze(model_image),np.squeeze(model_psf),np.squeeze(model_obs)])
 
-    print("chi2 between truth and model (obs)", fidelity(observation,model_obs))
 
-    make_plots([np.squeeze(true_image), np.squeeze(true_psf),np.squeeze(observation),
-                np.squeeze(model_image),[],np.squeeze(model_obs)])
+    else:
+        #now, we don't know the PSF
+        model_image, model_obs, model_psf = fit_model(observation, psf=None, noise=None, recover_base_image=True,
+                                           iterations=1000, minibatch_keep=0.75)
 
-   # print(observation)
+        print("Unknown PSF ....\n")
+        if len(model_image) > 0:
+            print("chi2 between truth and model", fidelity(true_image, model_image))
+
+        print("chi2 between truth and model (obs)", fidelity(observation, model_obs))
+
+        make_plots([np.squeeze(true_image), np.squeeze(true_psf), np.squeeze(observation),
+                    np.squeeze(model_image), np.squeeze(model_psf), np.squeeze(model_obs)])
+
+       # print(observation)
 
 if __name__ == '__main__':
     main()
