@@ -9,27 +9,10 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
-
-
-def make_noise(image):
-    # build the graph (use named scope to prevent any collisions)
-    with tf.variable_scope("observation"):
-        # inputs
-        ph_image = tf.placeholder(dtype=tf.float32, shape=image.shape)
-
-
-      #  ps_noise = poisson_avg_value_per_photon * \
-      #             tf.random_poisson(lam=poisson_avg_photons_per_pix, shape=image.shape, seed=SEED)
-
-        with tf.Session() as sess:
-            # run the graph
-            sess.run(tf.global_variables_initializer())
-            out_noise = sess.run(ps_noise, feed_dict={ph_image: image})
-
-    return out_noise
+#todo: actual error handling
 
 #assume image is x by y by channels (like r,g,b = 3 or greyscale=1)
-def image_patches(image,patch_size = 4):
+def make_image_patches(image,patch_size = 4):
     ''''''
 
     shape = np.shape(image)
@@ -55,8 +38,11 @@ def image_patches(image,patch_size = 4):
 
     number_of_patches = patches.shape[1] * patches.shape[2]
     patches = tf.reshape(patches, [number_of_patches, patch_size, patch_size, channels])
+
     return patches
 
+def flatten_tensor_2D(tensor): #4D tensor
+    return tf.reshape(tensor,[tensor.shape[0],(tensor.shape[1]*tensor.shape[2]*tensor.shape[3])])
 
 
 
@@ -68,6 +54,7 @@ def main():
     images.append(np.load('r214.985038d52.97236883.npy'))
     images.append(np.load('r215.0063129d52.97301577.npy'))
 
+
     #debug check the images
     if False:
         for i in images:
@@ -75,7 +62,14 @@ def main():
             plt.show()
             plt.close()
 
-    patches = image_patches(images[0])
+    #todo: change this to an input
+    image = images[0] #i.e 41x41x1
+
+    patches = make_image_patches(image) #i.e. (100,4,4,1) 100 patches of 4x4x1
+
+    feature_matrix = flatten_tensor_2D(patches) #i.e. from 100x4x4x1 to 100x16
+
+
 
     print("hi")
 
