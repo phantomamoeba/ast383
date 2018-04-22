@@ -8,6 +8,10 @@ __author__ = 'Dustin Davis'
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
+import sklearn.cluster as cluster
+#from sklearn.cluster import AgglomerativeClustering as agc
+#from sklearn.cluster import SpectralClustering as spc
+
 
 #todo: actual error handling
 
@@ -45,6 +49,35 @@ def flatten_tensor_2D(tensor): #4D tensor
     return tf.reshape(tensor,[tensor.shape[0],(tensor.shape[1]*tensor.shape[2]*tensor.shape[3])])
 
 
+def agg_clustering(X, connectivity=None, title="", num_clusters=3, linkage='ward'):
+    model = cluster.AgglomerativeClustering(linkage=linkage,
+                    connectivity=connectivity, n_clusters=num_clusters)
+    model.fit(X)
+
+    return model.labels_
+
+
+
+
+
+def segmentation_map(image,patch_size=4,num_clusters=None):
+
+    patches = make_image_patches(image, patch_size=4)  # i.e. (100,4,4,1) 100 patches of 4x4x1
+    feature_tensor = flatten_tensor_2D(patches)  # i.e. from 100x4x4x1 to 100x16
+
+    with tf.Session() as sess:
+        feature_matrix = sess.run(feature_tensor)
+
+    labels = agg_clustering(feature_matrix)
+
+    #now map labels back onto the (rows) of the features and onto the image
+    map = np.zeros(np.shape(image))
+
+    #turn 100 1D lables back into 100x4x4x1 (each label becomes 16 lables for 4x4x1)
+
+    return map
+
+
 
 def main():
     # a few test images from EGS field
@@ -56,19 +89,15 @@ def main():
 
 
     #debug check the images
-    if False:
-        for i in images:
-            plt.imshow(i, origin='lower')
-            plt.show()
-            plt.close()
+    # for i in images:
+    #     plt.imshow(i, origin='lower')
+    #     plt.show()
+    #     plt.close()
 
     #todo: change this to an input
     image = images[0] #i.e 41x41x1
 
-    patches = make_image_patches(image) #i.e. (100,4,4,1) 100 patches of 4x4x1
-
-    feature_matrix = flatten_tensor_2D(patches) #i.e. from 100x4x4x1 to 100x16
-
+    map = segmentation_map(image,patch_size=4)
 
 
     print("hi")
