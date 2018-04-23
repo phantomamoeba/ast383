@@ -111,10 +111,16 @@ def main():
     #     plt.close()
 
     #todo: change this to an input
-    image = images[0] #i.e 41x41x1
+    image = images[1] #i.e 41x41x1
+
 
     map = segmentation_map(image,patch_size=4)
 
+    #plot image and map (2x1) subfigures
+    plt.subplot(121)
+    plt.imshow(image,origin='lower')
+
+    plt.subplot(122)
     plt.imshow(map, origin='lower')
     plt.show()
     plt.close()
