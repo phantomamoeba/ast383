@@ -72,8 +72,25 @@ def segmentation_map(image,patch_size=4,num_clusters=None):
 
     #now map labels back onto the (rows) of the features and onto the image
     map = np.zeros(np.shape(image))
+    map[:,:] = -1
 
     #turn 100 1D lables back into 100x4x4x1 (each label becomes 16 lables for 4x4x1)
+    #so apply to map
+
+    #could do this as a loop (not strictly efficient, but makes sense)
+    #(could try tf.space_to_depth and some .reshape calls
+    #need the row strides and column strides ... use patch_size
+
+    #note ... this is a bit backward ...
+    row_stride = image.shape[0]//patch_size#how many patches per row
+    for r in range(image.shape[0]//patch_size * patch_size):
+        for c in range(image.shape[1]//patch_size * patch_size):
+            idx = (r//patch_size)*row_stride + (c//patch_size)
+            if idx < len(labels):
+                map[r][c] = labels[idx]
+            else:
+                map[r][c] = -1
+
 
     return map
 
@@ -98,6 +115,10 @@ def main():
     image = images[0] #i.e 41x41x1
 
     map = segmentation_map(image,patch_size=4)
+
+    plt.imshow(map, origin='lower')
+    plt.show()
+    plt.close()
 
 
     print("hi")
