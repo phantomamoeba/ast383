@@ -59,7 +59,6 @@ def agg_clustering(X, connectivity=None, title="", num_clusters=3, linkage='ward
 
 
 
-
 def segmentation_map(image,patch_size=4,num_clusters=None):
 
     patches = make_image_patches(image, patch_size=4)  # i.e. (100,4,4,1) 100 patches of 4x4x1
