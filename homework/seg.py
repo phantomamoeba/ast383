@@ -11,9 +11,59 @@ import matplotlib.pyplot as plt
 import sklearn.cluster as cluster
 #from sklearn.cluster import AgglomerativeClustering as agc
 #from sklearn.cluster import SpectralClustering as spc
+from astropy.visualization import ZScaleInterval
 
 
 #todo: actual error handling
+
+
+
+def get_vrange(vals, scale=1.0, contrast=1.0):
+    vmin = None
+    vmax = None
+    if scale == 0:
+        scale = 1.0
+
+    try:
+        zscale = ZScaleInterval(contrast=1.0, krej=2.5)  # nsamples=len(vals)
+        vmin, vmax = zscale.get_limits(values=vals)
+        vmin = vmin / scale
+        vmax = vmax / scale
+    except:
+        pass
+
+    return vmin, vmax
+
+
+def plot(image, map, filename=None):
+    plt.subplot(131)
+    plt.gca().set_xticks([])
+    plt.gca().set_yticks([])
+    cmap = plt.get_cmap('gray_r')
+    vmin, vmax = get_vrange(image)
+    plt.title("Gray-R, Z-Scale")
+    plt.imshow(image, origin='lower', cmap=cmap, vmin=vmin, vmax=vmax)
+
+    plt.subplot(132)
+    plt.gca().set_xticks([])
+    plt.gca().set_yticks([])
+    plt.title("No scaling")
+    plt.imshow(image, origin='lower')  # ,cmap=cmap)
+
+    plt.subplot(133)
+    plt.gca().set_xticks([])
+    plt.gca().set_yticks([])
+    plt.title("Segmentation Map")
+    plt.imshow(map, origin='lower')
+
+    if filename is not None:
+        plt.savefig(filename)
+    else:
+        plt.show()
+    plt.close()
+
+
+
 
 #assume image is x by y by channels (like r,g,b = 3 or greyscale=1)
 def make_image_patches(image,patch_size = 4):
@@ -95,6 +145,7 @@ def segmentation_map(image,patch_size=4,num_clusters=None):
 
 
 
+
 def main():
     # a few test images from EGS field
     images = []
@@ -111,22 +162,11 @@ def main():
     #     plt.close()
 
     #todo: change this to an input
-    image = images[1] #i.e 41x41x1
-
+    image = images[2] #i.e 41x41x1
 
     map = segmentation_map(image,patch_size=4)
 
-    #plot image and map (2x1) subfigures
-    plt.subplot(121)
-    plt.imshow(image,origin='lower')
-
-    plt.subplot(122)
-    plt.imshow(map, origin='lower')
-    plt.show()
-    plt.close()
-
-
-    print("hi")
+    plot(image,map)#,"testfig.png")
 
 if __name__ == '__main__':
     main()
